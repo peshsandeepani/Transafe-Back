@@ -1,0 +1,364 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RideVehicleType {
+  tuk_tuk
+  bike
+  car
+}
+
+enum RideRequestStatus {
+  requested
+  accepted
+  driver_en_route
+  picked_up
+  in_progress
+  completed
+  cancelled
+  expired
+  scheduled
+}
+
+enum RideTripType {
+  one_way
+  round_trip
+}
+
+enum RidePaymentMethod {
+  cash
+  card
+}
+
+enum RidePaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum WalletTransactionType {
+  TripEarning
+  TripCharge
+  Payout
+  Refund
+  Adjustment
+}
+
+enum WalletTransactionStatus {
+  Pending
+  Completed
+  Failed
+}
+
+model User {
+  id                Int      @id @default(autoincrement())
+  name              String
+  email             String   @unique
+  password          String
+  role              String
+  createdAt         DateTime @default(now())
+  assignedVehicleId String?
+  hospitalId        Int?
+  phone             String?
+  licenseNumber     String?
+  policeDepartmentId Int?
+  policeDepartment   PoliceDepartment? @relation(fields: [policeDepartmentId], references: [id])
+
+  rideDriverProfile RideDriver?
+  rideRequests      RideRequest[]
+  rideTrips         RideTrip[]
+  savedAddresses    SavedAddress[]
+  paymentMethods    PaymentMethod[]
+  wallet            Wallet?
+}
+
+model SavedAddress {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String
+  address     String
+  latitude    Float
+  longitude   Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RideDriver {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  user               User     @relation(fields: [userId], references: [id])
+  vehicleType        RideVehicleType
+  vehicleMake        String?
+  vehicleModel       String?
+  vehicleNumber      String?
+  licenseNumber      String?
+  isOnline           Boolean  @default(false)
+  lastKnownLatitude  Float?
+  lastKnownLongitude Float?
+  lastSeenAt         DateTime?
+  ratingAverage      Float    @default(0)
+  ratingCount        Int      @default(0)
+  earnings           Float    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  acceptedRequests   RideRequest[]
+  rideTrips          RideTrip[]
+}
+
+model RideRequest {
+  id                    Int                 @id @default(autoincrement())
+  riderId               Int
+  rider                 User                @relation(fields: [riderId], references: [id])
+
+  pickupLatitude        Float
+  pickupLongitude       Float
+  pickupAddress         String?
+  destinationLatitude   Float
+  destinationLongitude  Float
+  destinationAddress    String?
+
+  stopLatitude          Float?
+  stopLongitude         Float?
+  stopAddress           String?
+  returnDropLatitude    Float?
+  returnDropLongitude   Float?
+  returnDropAddress     String?
+
+  vehicleType           RideVehicleType
+  tripType              RideTripType        @default(one_way)
+  status                RideRequestStatus   @default(requested)
+
+  fareEstimate          Float?
+  acceptedDriverId      Int?
+  acceptedDriver        RideDriver?         @relation(fields: [acceptedDriverId], references: [id])
+  acceptedAt            DateTime?
+  driverEnRouteAt       DateTime?
+  pickedUpAt            DateTime?
+  completedAt           DateTime?
+
+  returnDateTime        DateTime?
+  parentRideRequestId   Int?
+  parentRideRequest     RideRequest?        @relation("RideRequestParent", fields: [parentRideRequestId], references: [id])
+  returnRideRequests    RideRequest[]       @relation("RideRequestParent")
+
+  finalFare             Float?
+  paymentMethod         RidePaymentMethod?
+  paymentStatus         RidePaymentStatus   @default(pending)
+  paymentProviderRef    String?
+  paymentFailureReason  String?
+
+  ratingGiven           Boolean             @default(false)
+
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  rideTrip              RideTrip?
+}
+
+model RideTrip {
+  id                    Int                 @id @default(autoincrement())
+  rideRequestId         Int                 @unique
+  rideRequest           RideRequest         @relation(fields: [rideRequestId], references: [id])
+
+  riderId               Int
+  rider                 User                @relation(fields: [riderId], references: [id])
+
+  driverId              Int
+  driver                RideDriver          @relation(fields: [driverId], references: [id])
+
+  pickupLatitude        Float
+  pickupLongitude       Float
+  pickupAddress         String?
+  destinationLatitude   Float
+  destinationLongitude  Float
+  destinationAddress    String?
+
+  status                String              @default("active")
+  routeDistanceKm       Float?
+  estimatedFare         Float?
+  finalFare             Float?
+  fare                  Decimal?            // Store fare as high-precision decimal for accurate payments
+  paymentMethodId       Int?                // Reference to rider's saved PaymentMethod (if card payment)
+  paymentMethod         RidePaymentMethod?
+  paymentStatus         RidePaymentStatus   @default(pending)
+  paymentProviderRef    String?
+  paymentFailureReason  String?
+
+  startedAt             DateTime?
+  completedAt           DateTime?
+  cancelledAt           DateTime?
+
+  rating                Int?
+
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+}
+
+model Vehicle {
+  id            Int      @id @default(autoincrement())
+  vehicleNumber String   @unique
+  type          String
+  driverName    String
+  gpsDeviceId   String
+  status        String   @default("Active")
+  hospitalId    Int?
+  createdAt     DateTime @default(now())
+}
+
+model AmbulanceTrip {
+  id               Int      @id @default(autoincrement())
+  ambulanceId      String
+  driverName       String
+  startLatitude    Float
+  startLongitude   Float
+  endLatitude      Float
+  endLongitude     Float
+  currentLatitude  Float?
+  currentLongitude Float?
+  status           String   @default("Active")
+  createdAt        DateTime @default(now())
+}
+
+model Student {
+  id        Int      @id @default(autoincrement())
+  name      String
+  grade     String
+  school    String
+  parentId  Int
+  busId     String?
+  createdAt DateTime @default(now())
+}
+
+model RoadIncident {
+  id                    Int      @id @default(autoincrement())
+  type                  String
+  description           String
+  latitude              Float
+  longitude             Float
+  locationName          String?
+  reportedBy            Int
+  status                String   @default("Active")
+  createdAt             DateTime @default(now())
+  imageUrl              String?
+  
+  // NEW FIELDS FOR SHARING & RESPONSE
+  sharedWith            Json     @default("[]")      // Array of driver IDs this is shared with
+  respondingDriverId    Int?                        // ID of driver responding
+  respondingDriverName  String?                     // Name of responding driver
+  
+  // NEW FIELDS FOR HOSPITAL RESPONSE
+  respondingHospitalId    Int?                      // ID of hospital responding
+  respondingHospitalName  String?                   // Name of responding hospital
+}
+
+
+
+model Hospital {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  address            String
+  phone              String
+  email              String   @unique
+  latitude           Float
+  longitude          Float
+  createdAt          DateTime @default(now())
+  type               String?  @default("Public")
+  registrationNumber String?  @unique
+  importantInfo      String?
+}
+
+model SOSAlert {
+  id         Int      @id @default(autoincrement())
+  latitude   Float
+  longitude  Float
+  senderName String
+  senderRole String
+  vehicleId  String?
+  status     String   @default("Active")
+  userId     Int
+  createdAt  DateTime @default(now())
+  sharedWith Json     @default("[]")
+}
+
+model PoliceDepartment {
+  id              Int      @id @default(autoincrement())
+  stationName     String
+  stationCode     String   @unique
+  division        String
+  address         String
+  phone           String
+  emergencyNumber String
+  officerInCharge String
+  email           String   @unique
+  latitude        Float
+  longitude       Float
+  district        String
+  province        String
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+
+  policeUsers User[]
+}
+
+model PaymentMethod {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // PayHere token (never raw card data)
+  payhereToken  String   @unique
+  
+  // Masked card info for display only (never raw PAN, CVV, or expiry)
+  cardLast4     String   @db.Char(4)
+  cardBrand     String   // e.g., "Visa", "Mastercard"
+  
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Wallet {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  balance   Decimal  @default(0) @db.Decimal(12, 2)
+  currency  String   @default("LKR")
+  
+  transactions WalletTransaction[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WalletTransaction {
+  id           Int                      @id @default(autoincrement())
+  walletId     Int
+  wallet       Wallet                   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  
+  type         WalletTransactionType    // TripEarning, TripCharge, Payout, Refund, Adjustment
+  amount       Decimal                  @db.Decimal(12, 2)
+  
+  // Optional reference to trip
+  relatedTripId Int?
+  
+  // Status of this transaction (Pending until webhook confirms it)
+  status       WalletTransactionStatus  @default(Pending)
+  
+  // PayHere transaction reference (for idempotency)
+  payhereTransactionId String?
+  
+  // Notes/description
+  description  String?
+  
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+}

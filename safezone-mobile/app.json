@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SafeZone Guardians",
+    "slug": "safezone-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0f172a",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "backgroundColor": "#0f172a",
+      "barStyle": "light-content"
+    },
+    "android": {
+      "usesCleartextTraffic": true,
+      "backgroundColor": "#0f172a",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#0f172a"
+      },
+      "statusBarBackgroundColor": "#1e293b",
+      "statusBarStyle": "light",
+      "package": "com.anonymous.safezonemobile"
+    },
+    "web": {
+      "favicon": "./assets/logo.png",
+      "backgroundColor": "#0f172a"
+    },
+    "theme": "#00bcd4"
+  }
+}
