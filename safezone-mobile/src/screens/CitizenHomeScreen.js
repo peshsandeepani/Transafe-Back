@@ -23,7 +23,7 @@ function CitizenHomeScreen({ user, setScreen, nearbyIncidents = [], sharedSOSAle
     { icon: "🔔", label: "Notifications", tab: "notifications" },
     ...(user?.role !== "admin" && user?.role !== "police_admin" && user?.role !== "hospital_admin"
       ? [
-          { icon: "🚕", label: "Rides", screen: "rideRequest" },
+          { icon: "🚕", label: "Book Ride", screen: "rideRequest" },
           { icon: "🗺️", label: "SafeZone Map", screen: "gpsTracking" },
         ]
       : []),
@@ -59,7 +59,10 @@ function CitizenHomeScreen({ user, setScreen, nearbyIncidents = [], sharedSOSAle
   const features = [
     ...commonFeatures,
     ...(roleFeatures[user?.role] || []),
-    ...(isRiderAccount ? [{ icon: "🚖", label: "Ride Requests", screen: "rideRequest" }] : []),
+    ...(isRiderAccount ? [
+      { icon: "🚖", label: "Your Rides", screen: "riderDashboard" },
+      { icon: "💳", label: "Wallet", screen: "wallet" }
+    ] : []),
     ...(sharedSOSAlerts.length > 0 ? [{ icon: "🆘", label: "Shared SOS", screen: "sharedSOS" }] : []),
   ].slice(0, 8);
 

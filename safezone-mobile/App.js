@@ -47,6 +47,7 @@ import AdminDashboardScreen from "./src/screens/AdminDashboardScreen";
 import RideRequestScreen from "./src/screens/RideRequestScreen";
 import RideSearchingScreen from "./src/screens/RideSearchingScreen";
 import RideTrackingScreen from "./src/screens/RideTrackingScreen";
+import RiderDashboardScreen from "./src/screens/RiderDashboardScreen";
 import DriverRideDashboardScreen from "./src/screens/DriverRideDashboardScreen";
 import DriverRideTrackingScreen from "./src/screens/DriverRideTrackingScreen";
 import RideDriverRegistrationScreen from "./src/screens/RideDriverRegistrationScreen";
@@ -121,6 +122,8 @@ export default function App() {
 
   const [liveAmbulanceTrips, setLiveAmbulanceTrips] = useState([]);
   const [selectedAmbulanceTrip, setSelectedAmbulanceTrip] = useState(null);
+
+  const [riderRideUpdates, setRiderRideUpdates] = useState([]);
 
   // Firebase listener initialization flags
   const [firebaseListenersInitialized, setFirebaseListenersInitialized] =
@@ -230,6 +233,19 @@ socket.on("nearbyEmergencyAlert", (data) => {
     socket.on("clearAmbulanceWarningAll", () => {
       setAmbulanceWarning(null);
       setWarningPopupShown(false);
+    });
+
+    socket.off("riderRideAccepted");
+    socket.on("riderRideAccepted", (data) => {
+      if (!user || Number(user.id) !== Number(data.riderId)) return;
+
+      Alert.alert(
+        "✅ Driver Found!",
+        `${data.driverName || "A driver"} accepted your ${data.vehicleType || "ride"} request!\n\nETA: ${data.eta || "calculating..."}`
+      );
+
+      // Update ride updates state
+      setRiderRideUpdates((prev) => [data, ...prev]);
     });
 
     socket.off("newSOSAlertAdmin");
@@ -1524,6 +1540,17 @@ socket.on("nearbyEmergencyAlert", (data) => {
             token={token}
             user={user}
             setScreen={setScreen}
+            setCurrentRideRequest={setCurrentRideRequest}
+          />
+        );
+
+      case "riderDashboard":
+        return (
+          <RiderDashboardScreen
+            token={token}
+            user={user}
+            setScreen={setScreen}
+            currentRideRequest={currentRideRequest}
             setCurrentRideRequest={setCurrentRideRequest}
           />
         );
