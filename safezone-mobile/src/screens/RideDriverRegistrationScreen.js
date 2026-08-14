@@ -10,6 +10,20 @@ import {
 import API from "../services/api";
 
 function RideDriverRegistrationScreen({ token, user, setScreen }) {
+  const normalizeRideVehicleType = (value) => {
+    const normalized = String(value ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/-/g, "_")
+      .replace(/\s+/g, "_");
+
+    if (normalized === "tuk_tuk" || normalized === "tuktuk") return "tuk_tuk";
+    if (normalized === "bike") return "bike";
+    if (normalized === "car") return "car";
+
+    return "car";
+  };
+
   const [vehicleType, setVehicleType] = useState("car");
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
@@ -22,7 +36,7 @@ function RideDriverRegistrationScreen({ token, user, setScreen }) {
       setLoading(true);
 
       const payload = {
-        vehicleType,
+        vehicleType: normalizeRideVehicleType(vehicleType),
         vehicleMake,
         vehicleModel,
         vehicleNumber,

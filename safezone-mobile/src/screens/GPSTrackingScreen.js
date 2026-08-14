@@ -579,7 +579,9 @@ function GPSTrackingScreen({
 
       {ambulanceWarning && (
         <View style={styles.warningCard}>
-          <Text style={styles.warningTitle}>🚑 Ambulance Approaching</Text>
+          <Text style={styles.warningTitle}>
+            🚑 {ambulanceWarning.label || "Ambulance Approaching"}
+          </Text>
 
           <Text style={styles.warningText}>
             Ambulance: {ambulanceWarning.ambulanceId}
@@ -589,7 +591,9 @@ function GPSTrackingScreen({
             Distance: {ambulanceWarning.distance} km
           </Text>
 
-          <Text style={styles.warningText}>Please give way safely.</Text>
+          <Text style={styles.warningText}>
+            {ambulanceWarning.message || "Please give way safely."}
+          </Text>
         </View>
       )}
 

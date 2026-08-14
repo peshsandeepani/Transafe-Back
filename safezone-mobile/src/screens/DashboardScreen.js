@@ -10,8 +10,10 @@ function DashboardScreen({
   sharedSOSAlerts,
   nearbyIncidents,
 }) {
-  const isRideDriver = Boolean(
-    user?.isRideDriver || user?.rideDriverProfile || user?.rideDriverProfile?.id
+  const isRiderAccount = Boolean(
+    user?.role === "rider" ||
+      user?.isRider ||
+      user?.rideProfile?.id
   );
 
   return (
@@ -27,28 +29,34 @@ function DashboardScreen({
 
       {ambulanceWarning && (
         <View style={styles.warningCard}>
-          <Text style={styles.warningTitle}>🚑 Ambulance Approaching</Text>
+          <Text style={styles.warningTitle}>
+            🚑 {ambulanceWarning.label || "Ambulance Approaching"}
+          </Text>
           <Text style={styles.warningText}>
             Ambulance: {ambulanceWarning.ambulanceId}
           </Text>
           <Text style={styles.warningText}>
             Distance: {ambulanceWarning.distance} km
           </Text>
-          <Text style={styles.warningText}>Please give way safely.</Text>
+          <Text style={styles.warningText}>
+            {ambulanceWarning.message || "Please give way safely."}
+          </Text>
         </View>
       )}
 
-      {user?.role !== "admin" && (
+      {user?.role !== "admin" && user?.role !== "driver" && user?.role !== "ambulance_driver" && (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Ride Booking</Text>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => setScreen("rideRequest")}
-          >
-            <Text style={styles.menuText}>🚕 Book a Ride</Text>
-          </TouchableOpacity>
+          {isRiderAccount && (
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => setScreen("rideRequest")}
+            >
+              <Text style={styles.menuText}>🚕 Book a Ride</Text>
+            </TouchableOpacity>
+          )}
 
-          {isRideDriver && (
+          {isRiderAccount && (
             <TouchableOpacity
               style={styles.menuButton}
               onPress={() => setScreen("driverRideDashboard")}

@@ -15,7 +15,11 @@
     "ios": {
       "supportsTablet": true,
       "backgroundColor": "#0f172a",
-      "barStyle": "light-content"
+      "barStyle": "light-content",
+      "bundleIdentifier": "com.anonymous.safezonemobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "usesCleartextTraffic": true,
@@ -32,6 +36,11 @@
       "favicon": "./assets/logo.png",
       "backgroundColor": "#0f172a"
     },
-    "theme": "#00bcd4"
+    "theme": "#00bcd4",
+    "extra": {
+      "eas": {
+        "projectId": "d27c0128-ba72-4c62-a172-dceb46ea6cee"
+      }
+    }
   }
 }

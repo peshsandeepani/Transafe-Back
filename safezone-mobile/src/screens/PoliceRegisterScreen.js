@@ -16,7 +16,7 @@ import { Picker } from "@react-native-picker/picker";
 import API from "../services/api";
 import styles from "../styles/styles";
 
-function PoliceRegisterScreen({ setScreen }) {
+function PoliceRegisterScreen({ setScreen, token }) {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
 
@@ -260,7 +260,12 @@ const searchPoliceStations = async (text) => {
 
       const response = await API.post(
         "/police-departments",
-        policeDepartmentData
+        policeDepartmentData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       Alert.alert(

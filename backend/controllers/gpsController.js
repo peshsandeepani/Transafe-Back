@@ -80,6 +80,8 @@ const updateGPS = async (req, res) => {
 
     // Realtime ambulance warning
     if (vehicleId.startsWith("AMB")) {
+      console.log(`[GPS Update] Ambulance ${vehicleId} at ${lat}, ${lng}`);
+      
       io.emit("nearbyEmergencyAlert", {
         ambulanceId: vehicleId,
         latitude: lat,

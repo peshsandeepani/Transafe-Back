@@ -18,6 +18,12 @@ import API from "../services/api";
 import styles from "../styles/styles";
 
 function RegisterScreen({ setUser, setToken, setScreen }) {
+  const rideVehicleOptions = [
+    { label: "Tuk-tuk", value: "tuk_tuk" },
+    { label: "Bike", value: "bike" },
+    { label: "Car", value: "car" },
+  ];
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -26,7 +32,7 @@ function RegisterScreen({ setUser, setToken, setScreen }) {
     phone: "",
     licenseNumber: "",
     vehicleNumber: "",
-    vehicleType: "Car",
+    vehicleType: "car",
     gpsDeviceId: "",
     vehicleMake: "",
     vehicleModel: "",
@@ -271,18 +277,23 @@ function RegisterScreen({ setUser, setToken, setScreen }) {
               <TouchableOpacity
                 style={{ backgroundColor: "#1F2937", borderRadius: 8, marginBottom: 16, padding: 12 }}
                 onPress={() => {
-                  const options = ["Car", "Van", "Bus", "Motorbike", "Three Wheeler", "Lorry", "Cancel"];
+                  const options = ["Car", "Bike", "Tuk-tuk", "Cancel"];
+                  const valueMap = {
+                    Car: "car",
+                    Bike: "bike",
+                    "Tuk-tuk": "tuk_tuk",
+                  };
                   ActionSheetIOS.showActionSheetWithOptions(
                     { options, cancelButtonIndex: options.length - 1 },
                     (buttonIndex) => {
                       if (buttonIndex !== options.length - 1) {
-                        handleChange("vehicleType", options[buttonIndex]);
+                        handleChange("vehicleType", valueMap[options[buttonIndex]]);
                       }
                     }
                   );
                 }}
               >
-                <Text style={{ color: "white" }}>{form.vehicleType}</Text>
+                <Text style={{ color: "white" }}>{rideVehicleOptions.find((option) => option.value === form.vehicleType)?.label || "Car"}</Text>
               </TouchableOpacity>
             ) : (
               <View style={{ backgroundColor: "#1F2937", borderRadius: 8, marginBottom: 16 }}>
@@ -292,12 +303,9 @@ function RegisterScreen({ setUser, setToken, setScreen }) {
                   style={{ color: "white", height: 50 }}
                   itemStyle={{ color: "white" }}
                 >
-                  <Picker.Item label="Car" value="Car" />
-                  <Picker.Item label="Van" value="Van" />
-                  <Picker.Item label="Bus" value="Bus" />
-                  <Picker.Item label="Motorbike" value="Motorbike" />
-                  <Picker.Item label="Three Wheeler" value="Three Wheeler" />
-                  <Picker.Item label="Lorry" value="Lorry" />
+                  {rideVehicleOptions.map((option) => (
+                    <Picker.Item key={option.value} label={option.label} value={option.value} />
+                  ))}
                 </Picker>
               </View>
             )}
@@ -365,17 +373,22 @@ function RegisterScreen({ setUser, setToken, setScreen }) {
                 style={{ backgroundColor: "#1F2937", borderRadius: 8, marginBottom: 16, padding: 12 }}
                 onPress={() => {
                   const options = ["Tuk-tuk", "Bike", "Car", "Cancel"];
+                  const valueMap = {
+                    "Tuk-tuk": "tuk_tuk",
+                    Bike: "bike",
+                    Car: "car",
+                  };
                   ActionSheetIOS.showActionSheetWithOptions(
                     { options, cancelButtonIndex: options.length - 1 },
                     (buttonIndex) => {
                       if (buttonIndex !== options.length - 1) {
-                        handleChange("vehicleType", options[buttonIndex]);
+                        handleChange("vehicleType", valueMap[options[buttonIndex]]);
                       }
                     }
                   );
                 }}
               >
-                <Text style={{ color: "white" }}>{form.vehicleType}</Text>
+                <Text style={{ color: "white" }}>{rideVehicleOptions.find((option) => option.value === form.vehicleType)?.label || "Car"}</Text>
               </TouchableOpacity>
             ) : (
               <View style={{ backgroundColor: "#1F2937", borderRadius: 8, marginBottom: 16 }}>
@@ -385,9 +398,9 @@ function RegisterScreen({ setUser, setToken, setScreen }) {
                   style={{ color: "white", height: 50 }}
                   itemStyle={{ color: "white" }}
                 >
-                  <Picker.Item label="Tuk-tuk" value="Tuk-tuk" />
-                  <Picker.Item label="Bike" value="Bike" />
-                  <Picker.Item label="Car (Flex)" value="Car" />
+                  {rideVehicleOptions.map((option) => (
+                    <Picker.Item key={option.value} label={option.label} value={option.value} />
+                  ))}
                 </Picker>
               </View>
             )}

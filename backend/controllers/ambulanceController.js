@@ -69,7 +69,7 @@ const getDriverWarningState = (distanceKm, vehicleInFront, directionMatch) => {
   if (distanceKm > 0.05 && vehicleInFront && directionMatch) {
     return {
       status: "at_driver_location",
-      label: "At driver's exact location",
+      label: "At driver location",
       message: "Ambulance is at your exact location. Stop and give way.",
     };
   }
@@ -234,41 +234,33 @@ const updateLocation = async (req, res) => {
       }
 
       const vehicleHeading = vehicle.heading;
+      let directionMatch = true;
+      let vehicleInFront = true;
 
-      if (vehicleHeading == null || ambulanceHeading == null) {
-        io.emit("clearAmbulanceWarning", {
-          vehicleId: vehicle.vehicleId,
-          ambulanceId: trip.ambulanceId,
-        });
+      // If heading data exists, use strict directional checks
+      if (vehicleHeading != null && ambulanceHeading != null) {
+        directionMatch = angleDiff(ambulanceHeading, vehicleHeading) <= 45;
 
-        try {
-          await rtdb.ref(`driverWarnings/${vehicle.vehicleId}`).remove();
-        } catch (fbError) {
-          console.log("Firebase ambulance warning clear error:", fbError.message);
-        }
+        const bearingToVehicle = calculateBearing(
+          ambulanceLatitude,
+          ambulanceLongitude,
+          vehicle.latitude,
+          vehicle.longitude
+        );
 
-        continue;
+        vehicleInFront = angleDiff(ambulanceHeading, bearingToVehicle) <= 70;
       }
+      // If heading data is missing, allow warning based on distance alone
 
-      const directionMatch =
-        angleDiff(ambulanceHeading, vehicleHeading) <= 45;
-
-      const bearingToVehicle = calculateBearing(
-        ambulanceLatitude,
-        ambulanceLongitude,
-        vehicle.latitude,
-        vehicle.longitude
-      );
-
-      const vehicleInFront =
-        angleDiff(ambulanceHeading, bearingToVehicle) <= 70;
-
-      if (directionMatch && vehicleInFront) {
+      // Show warning if within distance range OR (if heading checks are available, they pass)
+      if (distance <= 1.2 && (vehicleHeading == null || ambulanceHeading == null || (directionMatch && vehicleInFront))) {
         const warningState = getDriverWarningState(
           Number(distance.toFixed(2)),
           vehicleInFront,
           directionMatch
         );
+
+        console.log(`[Ambulance Warning] Vehicle: ${vehicle.vehicleId}, Ambulance: ${trip.ambulanceId}, Distance: ${distance.toFixed(2)} km, State: ${warningState.status}`);
 
         const warningPayload = {
           vehicleId: vehicle.vehicleId,
@@ -290,6 +282,8 @@ const updateLocation = async (req, res) => {
           console.log("Firebase ambulance warning write error:", fbError.message);
         }
       } else {
+        console.log(`[Clear Warning] Vehicle: ${vehicle.vehicleId}, Ambulance: ${trip.ambulanceId}, Distance: ${distance.toFixed(2)} km (out of range or direction mismatch)`);
+        
         io.emit("clearAmbulanceWarning", {
           vehicleId: vehicle.vehicleId,
           ambulanceId: trip.ambulanceId,

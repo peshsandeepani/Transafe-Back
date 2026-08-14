@@ -10,7 +10,11 @@ function getGreeting() {
 }
 
 function CitizenHomeScreen({ user, setScreen, nearbyIncidents = [], sharedSOSAlerts = [], onTabChange }) {
-  const isRideDriver = Boolean(user?.isRideDriver || user?.rideDriverProfile?.id);
+  const isRiderAccount = Boolean(
+    user?.role === "rider" ||
+      user?.isRider ||
+      user?.rideProfile?.id
+  );
   const greeting = useMemo(() => getGreeting(), []);
   const commonFeatures = [
     { icon: "🚨", label: "SOS", screen: "emergencySOS" },
@@ -55,7 +59,7 @@ function CitizenHomeScreen({ user, setScreen, nearbyIncidents = [], sharedSOSAle
   const features = [
     ...commonFeatures,
     ...(roleFeatures[user?.role] || []),
-    ...(isRideDriver ? [{ icon: "🚖", label: "Ride Requests", screen: "driverRideDashboard" }] : []),
+    ...(isRiderAccount ? [{ icon: "🚖", label: "Ride Requests", screen: "rideRequest" }] : []),
     ...(sharedSOSAlerts.length > 0 ? [{ icon: "🆘", label: "Shared SOS", screen: "sharedSOS" }] : []),
   ].slice(0, 8);
 

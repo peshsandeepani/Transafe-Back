@@ -15,9 +15,9 @@ function CitizenAccountScreen({ user, handleLogout, setScreen }) {
     user?.role
   );
   const isRiderAccount = Boolean(
-    user?.isRider ||
+    user?.role === "rider" ||
+      user?.isRider ||
       user?.rideProfile?.id ||
-      user?.role === "rider" ||
       user?.hasRideHistory
   );
   const riderRating = Number(
@@ -42,8 +42,8 @@ function CitizenAccountScreen({ user, handleLogout, setScreen }) {
         ...accountMenuItems,
       ];
 
-  // Add wallet only for ride-driver users, payments for all non-admin riders
-  const menuItems = isRideDriver
+  // Only rider accounts should see wallet and earnings + rider payment flows
+  const menuItems = isRiderAccount
     ? [
         { icon: "👛", label: "Wallet & Earnings", screen: "wallet" },
         ...riderMenuItems,

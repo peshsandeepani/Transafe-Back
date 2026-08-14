@@ -98,7 +98,7 @@ const getDriverWarningState = (distanceKm, vehicleInFront, directionMatch) => {
   if (distanceKm > 0.05 && vehicleInFront && directionMatch) {
     return {
       status: "at_driver_location",
-      label: "At driver's exact location",
+      label: "At driver location",
       message: "Ambulance is at your exact location. Stop and give way.",
     };
   }
@@ -229,15 +229,19 @@ router.post("/update", async (req, res) => {
           vehicle.longitude
         );
 
-        const vehicleAhead = isVehicleAhead(
-          lat,
-          lng,
-          updatedVehicle.heading,
-          vehicle.latitude,
-          vehicle.longitude
-        );
+        // If heading is available, check if vehicle is ahead
+        // If heading is null, allow warning based on distance alone (fallback)
+        const vehicleAhead = updatedVehicle.heading !== null && updatedVehicle.heading !== undefined
+          ? isVehicleAhead(
+              lat,
+              lng,
+              updatedVehicle.heading,
+              vehicle.latitude,
+              vehicle.longitude
+            )
+          : true; // Allow warning without heading check
 
-        if (distance <= 1 && vehicleAhead) {
+        if (distance <= 1.2 && vehicleAhead) {
           const warningState = getDriverWarningState(
             Number(distance.toFixed(2)),
             vehicleAhead,

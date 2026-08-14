@@ -6,6 +6,33 @@ const { auth } = require("../config/firebaseAdmin");
 
 const prisma = new PrismaClient();
 
+const normalizeRideVehicleType = (value) => {
+  if (value === undefined || value === null) return null;
+
+  const normalized = String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, "_")
+    .replace(/\s+/g, "_");
+
+  const mapped = {
+    tuk_tuk: "tuk_tuk",
+    tuktuk: "tuk_tuk",
+    bike: "bike",
+    car: "car",
+  };
+
+  const finalValue = mapped[normalized] || normalized;
+
+  if (!["tuk_tuk", "bike", "car"].includes(finalValue)) {
+    throw new Error(
+      `Invalid vehicle type: "${value}". Valid values are: tuk_tuk, bike, car`
+    );
+  }
+
+  return finalValue;
+};
+
 const register = async (req, res) => {
   try {
     const {
@@ -36,12 +63,14 @@ const register = async (req, res) => {
 
     const driverScopePayload = rideDriver || null;
     const wantRideDriver = Boolean(becomeRideDriver) || role === "driver" || role === "ambulance_driver";
+    const finalRole = wantRideDriver ? "rider" : role;
 
     const isVehicleRole =
       role === "driver" || role === "ambulance_driver" || wantRideDriver;
 
     const finalVehicleNumber = vehicleNumber || assignedVehicleId || driverScopePayload?.vehicleNumber;
-    const finalVehicleType = vehicleType || driverScopePayload?.vehicleType || null;
+    const rawVehicleType = vehicleType || driverScopePayload?.vehicleType || null;
+    const finalVehicleType = normalizeRideVehicleType(rawVehicleType);
     const finalLicenseNumber = licenseNumber || driverScopePayload?.licenseNumber || null;
     const finalPhone = phone || driverScopePayload?.phone || null;
     const finalGpsDeviceId = gpsDeviceId || driverScopePayload?.gpsDeviceId || null;
@@ -89,53 +118,59 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role,
-        phone: isVehicleRole ? finalPhone : phone || null,
-        licenseNumber: isVehicleRole
-          ? finalLicenseNumber
-          : licenseNumber || null,
-        hospitalId: hospitalId ? Number(hospitalId) : null,
-        assignedVehicleId: isVehicleRole ? finalVehicleNumber : null,
-      },
-    });
+    let user;
 
-    if (wantRideDriver) {
-      await prisma.rideDriver.create({
+    await prisma.$transaction(async (tx) => {
+      user = await tx.user.create({
         data: {
-          userId: user.id,
-          vehicleType: finalVehicleType === "bike" ? "car" : finalVehicleType,
-          vehicleMake: finalVehicleMake,
-          vehicleModel: finalVehicleModel,
-          vehicleNumber: finalVehicleNumber,
-          licenseNumber: finalLicenseNumber,
-          isOnline: true,
+          name,
+          email,
+          password: hashedPassword,
+          role: finalRole,
+          phone: isVehicleRole ? finalPhone : phone || null,
+          licenseNumber: isVehicleRole
+            ? finalLicenseNumber
+            : licenseNumber || null,
+          hospitalId: hospitalId ? Number(hospitalId) : null,
+          assignedVehicleId: isVehicleRole ? finalVehicleNumber : null,
         },
       });
-    }
 
-    if (isVehicleRole) {
-      await prisma.vehicle.create({
-        data: {
-          vehicleNumber: finalVehicleNumber,
-          type: finalVehicleType,
-          driverName: name,
-          gpsDeviceId: finalGpsDeviceId,
-          status: "Active",
-          hospitalId: user.hospitalId ? Number(user.hospitalId) : undefined,
-        },
-      });
-    }
+      if (wantRideDriver) {
+        await tx.rideDriver.create({
+          data: {
+            userId: user.id,
+            vehicleType: finalVehicleType,
+            vehicleMake: finalVehicleMake,
+            vehicleModel: finalVehicleModel,
+            vehicleNumber: finalVehicleNumber,
+            licenseNumber: finalLicenseNumber,
+            isOnline: true,
+          },
+        });
+      }
 
-    const driverProfile = await prisma.rideDriver.findUnique({
-      where: {
-        userId: user.id,
-      },
+      if (isVehicleRole) {
+        await tx.vehicle.create({
+          data: {
+            vehicleNumber: finalVehicleNumber,
+            type: finalVehicleType,
+            driverName: name,
+            gpsDeviceId: finalGpsDeviceId,
+            status: "Active",
+            hospitalId: user.hospitalId ? Number(user.hospitalId) : undefined,
+          },
+        });
+      }
     });
+
+    const driverProfile = wantRideDriver
+      ? await prisma.rideDriver.findUnique({
+          where: {
+            userId: user.id,
+          },
+        })
+      : null;
 
     const token = jwt.sign(
       {

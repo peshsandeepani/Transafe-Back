@@ -15,6 +15,7 @@ import GPSTrackingScreen from "./src/screens/GPSTrackingScreen";
 import RoadIncidentsScreen from "./src/screens/RoadIncidentsScreen";
 import AmbulanceWarningsScreen from "./src/screens/AmbulanceWarningsScreen";
 import AmbulanceTripsScreen from "./src/screens/AmbulanceTripsScreen";
+import HospitalDashboardScreen from "./src/screens/HospitalDashboardScreen";
 import HospitalChartsScreen from "./src/screens/HospitalChartsScreen";
 import RegisterAmbulanceDriverScreen from "./src/screens/RegisterAmbulanceDriverScreen";
 import HospitalAmbulanceTripsScreen from "./src/screens/HospitalAmbulanceTripsScreen";
@@ -96,7 +97,6 @@ export default function App() {
   const [ambulanceWarning, setAmbulanceWarning] = useState(null);
   const [gpsLocation, setGpsLocation] = useState(null);
   const [warningPopupShown, setWarningPopupShown] = useState(false);
-  const lastWarningKeyRef = useRef("");
 
   const [selectedSosAlert, setSelectedSosAlert] = useState(null);
   const [sharedSOSAlerts, setSharedSOSAlerts] = useState([]);
@@ -146,8 +146,6 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-
-    const unsubscribers = [];
 
     const loadOfficerAlerts = async () => {
       try {
@@ -206,33 +204,13 @@ socket.on("nearbyEmergencyAlert", (data) => {
     socket.on("nearbyDriverWarning", (warning) => {
       if (!user || warning.vehicleId !== user.assignedVehicleId) return;
 
-      const warningKey = `${warning.ambulanceId}_${warning.status}_${warning.distance}`;
-      const isSameWarning = warningKey === lastWarningKeyRef.current;
-
       setAmbulanceWarning(warning);
 
-      if (!isSameWarning) {
-        lastWarningKeyRef.current = warningKey;
-        setWarningPopupShown(true);
-
-        const warningTitle =
-          warning.status === "still_far"
-            ? "🚑 Ambulance Still Far"
-            : warning.status === "approaching"
-            ? "🚑 Ambulance Approaching"
-            : warning.status === "near_driver"
-            ? "🚑 Ambulance Near You"
-            : warning.status === "at_driver_location"
-            ? "🚑 Ambulance At Your Location"
-            : warning.status === "passing_driver"
-            ? "🚑 Ambulance Passing"
-            : "🚑 Ambulance Warning";
-
-        Alert.alert(
-          warningTitle,
-          `${warning.message}\n\nDistance: ${warning.distance} km\nState: ${warning.label || warning.status}`
-        );
-      }
+      // Show alert for every distance update/state change
+      Alert.alert(
+        `🚑 ${warning.label || "Ambulance Approaching"}`,
+        `${warning.message}\n\nDistance: ${warning.distance} km`
+      );
     });
 
     socket.off("gpsUpdate");
@@ -246,60 +224,13 @@ socket.on("nearbyEmergencyAlert", (data) => {
       if (!user || data.vehicleId !== user.assignedVehicleId) return;
       setAmbulanceWarning(null);
       setWarningPopupShown(false);
-      lastWarningKeyRef.current = "";
     });
 
     socket.off("clearAmbulanceWarningAll");
     socket.on("clearAmbulanceWarningAll", () => {
       setAmbulanceWarning(null);
       setWarningPopupShown(false);
-      lastWarningKeyRef.current = "";
     });
-
-    if (user && user.assignedVehicleId) {
-      const warningsRef = ref(rtdb, `driverWarnings/${user.assignedVehicleId}`);
-      const unsubWarnings = onValue(warningsRef, (snapshot) => {
-        if (!snapshot.exists()) {
-          setAmbulanceWarning(null);
-          setWarningPopupShown(false);
-          lastWarningKeyRef.current = "";
-          return;
-        }
-
-        const warning = snapshot.val();
-        const warningKey = `${warning.ambulanceId}_${warning.status}_${warning.distance}`;
-
-        if (warningKey === lastWarningKeyRef.current) {
-          setAmbulanceWarning(warning);
-          return;
-        }
-
-        lastWarningKeyRef.current = warningKey;
-
-        const warningTitle =
-          warning.status === "still_far"
-            ? "🚑 Ambulance Still Far"
-            : warning.status === "approaching"
-            ? "🚑 Ambulance Approaching"
-            : warning.status === "near_driver"
-            ? "🚑 Ambulance Near You"
-            : warning.status === "at_driver_location"
-            ? "🚑 Ambulance At Your Location"
-            : warning.status === "passing_driver"
-            ? "🚑 Ambulance Passing"
-            : "🚑 Ambulance Warning";
-
-        setAmbulanceWarning(warning);
-        setWarningPopupShown(true);
-
-        Alert.alert(
-          warningTitle,
-          `${warning.message}\n\nDistance: ${warning.distance} km\nState: ${warning.label || warning.status}`
-        );
-      });
-
-      unsubscribers.push(unsubWarnings);
-    }
 
     socket.off("newSOSAlertAdmin");
     socket.on("newSOSAlertAdmin", async (sos) => {
@@ -617,7 +548,6 @@ socket.on("nearbyEmergencyAlert", (data) => {
     });
 
     return () => {
-      unsubscribers.forEach((unsub) => unsub && unsub());
       socket.off("incidentNotification");
       socket.off("nearbyEmergencyAlert");
       socket.off("incidentHospitalResponse");
@@ -934,19 +864,52 @@ socket.on("nearbyEmergencyAlert", (data) => {
 
                 // === nearbyDriverWarning ===
                 if (distance <= 1) {
+                  let status = "approaching";
+                  let label = "Approaching";
+
+                  if (distance > 1.2) {
+                    status = "still_far";
+                    label = "Still far";
+                  } else if (distance > 0.5) {
+                    status = "approaching";
+                    label = "Approaching";
+                  } else if (distance > 0.18) {
+                    status = "near_driver";
+                    label = "Near driver";
+                  } else if (distance > 0.05) {
+                    status = "at_driver_location";
+                    label = "At driver location";
+                  } else {
+                    status = "passing_driver";
+                    label = "Passing driver";
+                  }
+
+                  const warningMessage =
+                    status === "still_far"
+                      ? "Ambulance is still far away. Keep driving normally."
+                      : status === "approaching"
+                        ? "Ambulance is approaching. Stay alert and keep a safe distance."
+                        : status === "near_driver"
+                          ? "Ambulance is very near. Please give way carefully."
+                          : status === "at_driver_location"
+                            ? "Ambulance is at your exact location. Stop and give way."
+                            : "Ambulance is passing your vehicle. Give way now.";
+
                   setAmbulanceWarning({
                     vehicleId: user.assignedVehicleId,
                     ambulanceId: vehicleId,
                     ambulanceLatitude: ambulanceLocation.latitude,
                     ambulanceLongitude: ambulanceLocation.longitude,
                     distance: distance.toFixed(2),
-                    message: "🚑 Ambulance approaching ahead. Please give way safely.",
+                    status,
+                    label,
+                    message: warningMessage,
                   });
 
                   if (!warningPopupShown) {
                     Alert.alert(
-                      "🚑 Ambulance Approaching",
-                      `${ambulanceLocation.message || "Ambulance is approaching"}\n\nDistance: ${distance.toFixed(2)} km`
+                      `🚑 ${label}`,
+                      `${warningMessage}\n\nDistance: ${distance.toFixed(2)} km`
                     );
                     setWarningPopupShown(true);
                   }
@@ -1293,20 +1256,6 @@ socket.on("nearbyEmergencyAlert", (data) => {
     };
   }, [user, firebaseListenersInitialized, liveRoadIncidentsInitialLoadDone, liveUserNotificationsInitialLoadDone]);
 
-  const clearOfficerIncidentAlerts = async () => {
-    if (!user || user.role !== "police_officer") return;
-
-    setOfficerIncidentAlerts([]);
-    await AsyncStorage.setItem(`officerIncidentAlerts_${user.id}`, JSON.stringify([]));
-  };
-
-  const clearSharedRoadIncidentAlerts = async () => {
-    if (!user || user.role !== "ambulance_driver") return;
-
-    setSharedRoadIncidents([]);
-    await AsyncStorage.setItem(`sharedRoadIncidents_${user.id}`, JSON.stringify([]));
-  };
-
   const handleLogout = () => {
     setUser(null);
     setToken(null);
@@ -1511,19 +1460,22 @@ socket.on("nearbyEmergencyAlert", (data) => {
           <OfficerTripTrackingScreen
             destination={officerTripDestination}
             setScreen={setScreen}
-            setOfficerTripDestination={setOfficerTripDestination}
-            clearOfficerIncidentAlerts={clearOfficerIncidentAlerts}
+          />
+        );
+
+      case "hospitalDashboard":
+        return (
+          <HospitalDashboardScreen
+            token={token}
+            user={user}
+            setScreen={setScreen}
+            nearbyIncidents={nearbyIncidents}
+            setSelectedIncident={setSelectedIncident}
+            setIncidentCallback={setIncidentCallbacks}
           />
         );
 
       case "hospitalCharts":
-        return (
-          <HospitalChartsScreen
-            token={token}
-            user={user}
-            setScreen={setScreen}
-          />
-        );
         return (
           <HospitalChartsScreen
             token={token}
@@ -1656,10 +1608,6 @@ socket.on("nearbyEmergencyAlert", (data) => {
             setGpsLocation={setGpsLocation}
             ambulanceWarning={ambulanceWarning}
             officerTripDestination={officerTripDestination}
-            setOfficerTripDestination={setOfficerTripDestination}
-            clearOfficerIncidentAlerts={clearOfficerIncidentAlerts}
-            clearSharedRoadIncidentAlerts={clearSharedRoadIncidentAlerts}
-            setScreen={setScreen}
           />
         );
 
